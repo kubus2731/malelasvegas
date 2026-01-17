@@ -79,6 +79,17 @@ static void MX_SPI1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+typedef enum {
+    STATE_MENU,
+    STATE_GAME,
+    STATE_AUTHORS,
+    STATE_DESC,
+    STATE_HIGHSCORES
+} SystemState;
+
+volatile SystemState currentState = STATE_MENU;
+int menu_position = 0; // 0=Gra, 1=Autorzy, 2=Opis, 3=Wyniki
+
 typedef struct {
     int obecny_symbol; // Indeks symbolu, który jest teraz na środku (0-6)
     int nas_symbol;    // Indeks symbolu, który wjeżdża z góry (0-6)
@@ -197,109 +208,150 @@ int main(void)
     /* USER CODE END WHILE */
 	  ssd1306_Fill(Black);
 
-	          	 ssd1306_SetCursor(0, 0);
+	  switch (currentState){
 
-	          	 sprintf(buffor, "Kredyty: %d", credits);
+	  case STATE_MENU:
+		  ssd1306_SetCursor(20, 0);
+		  ssd1306_WriteString("MENU GLOWNE", Font_7x10, White);
 
-	          	 ssd1306_WriteString(buffor, Font_6x8, White);
+		  ssd1306_SetCursor(10, 15);
+		  ssd1306_WriteString(menu_position == 0 ? "> 1. Gra" : "  1. Gra", Font_6x8, White);
 
-	          	 for(int x=0; x < 128; x++){ ssd1306_DrawPixel(x, 15, White); }
+		  ssd1306_SetCursor(10, 25);
+		  ssd1306_WriteString(menu_position == 1 ? "> 2. Autorzy" : "  2. Autorzy", Font_6x8, White);
 
-	          	 for(int x=0; x < 128; x++){ ssd1306_DrawPixel(x, 48, White); }
+		  ssd1306_SetCursor(10, 35);
+		  ssd1306_WriteString(menu_position == 2 ? "> 3. Opis" : "  3. Opis", Font_6x8, White);
 
-	          	 ssd1306_SetCursor(0, 27);
-	          	 ssd1306_WriteString(">", Font_7x10, White);
+		  ssd1306_SetCursor(10, 45);
+		  ssd1306_WriteString(menu_position == 3 ? "> 4. Wyniki" : "  4. Wyniki", Font_6x8, White);
 
-	          	 ssd1306_SetCursor(120, 27);
-	          	 ssd1306_WriteString("<", Font_7x10, White);
+		  break;
 
-	          	 for(int i=0; i < 3;i++){
+	  case STATE_GAME:
+		  ssd1306_SetCursor(0, 0);
 
-	          		 if(stan_bebna[i] == 1){
+		  	          	 sprintf(buffor, "Kredyty: %d", credits);
 
-	          			 uint32_t dodatkowe_opoznienie = i * 1000;
+		  	          	 ssd1306_WriteString(buffor, Font_6x8, White);
 
-	          			 if(HAL_GetTick() - czas_startu > (czas_trwania + dodatkowe_opoznienie)){
-	          				 if(beben[i].pixel_offset == 0){
-	          					 stan_bebna[i] = 0;
-	          				 }
-	          			 }
+		  	          	 for(int x=0; x < 128; x++){ ssd1306_DrawPixel(x, 15, White); }
 
-	                       if(stan_bebna[i] == 1) {
-	          			     beben[i].pixel_offset += speed; // Przesuwanie o 'speed' px
+		  	          	 for(int x=0; x < 128; x++){ ssd1306_DrawPixel(x, 48, White); }
 
-	                           if(beben[i].pixel_offset >= 32){
-	                               beben[i].pixel_offset =  0;
-	                               beben[i].obecny_symbol = beben[i].nas_symbol;
-	                               beben[i].nas_symbol = rand() % 7;
-	                           }
-	                       }
-	          		 }
+		  	          	 ssd1306_SetCursor(0, 27);
+		  	          	 ssd1306_WriteString(">", Font_7x10, White);
 
-	                   int symbol_obecny_y = beben[i].pixel_offset + 16;
-	                   int symbol_nastepny_y = symbol_obecny_y - 32;
+		  	          	 ssd1306_SetCursor(120, 27);
+		  	          	 ssd1306_WriteString("<", Font_7x10, White);
 
-	                   ssd1306_DrawBitmap(beben[i].x_poz, symbol_obecny_y, epd_bitmap_allArray[beben[i].obecny_symbol], 32, 32, White);
-	                   ssd1306_DrawBitmap(beben[i].x_poz, symbol_nastepny_y, epd_bitmap_allArray[beben[i].nas_symbol], 32, 32, White);
+		  	          	 for(int i=0; i < 3;i++){
 
-	          	 }
+		  	          		 if(stan_bebna[i] == 1){
 
-	          	 if(gra_aktywna == 1 && stan_bebna[0] == 0 && stan_bebna[1] == 0 && stan_bebna[2] == 0 && brak_kasy == 0){
+		  	          			 uint32_t dodatkowe_opoznienie = i * 1000;
 
-	          		 int s0 = beben[0].obecny_symbol;
-	          		 int s1 = beben[1].obecny_symbol;
-	          		 int s2 = beben[2].obecny_symbol;
+		  	          			 if(HAL_GetTick() - czas_startu > (czas_trwania + dodatkowe_opoznienie)){
+		  	          				 if(beben[i].pixel_offset == 0){
+		  	          					 stan_bebna[i] = 0;
+		  	          				 }
+		  	          			 }
 
-	          		 int wygrana_kasa = 0;
+		  	                       if(stan_bebna[i] == 1) {
+		  	          			     beben[i].pixel_offset += speed; // Przesuwanie o 'speed' px
 
-	          		 if(s0 == s1 && s1 == s2){
-	          			 wygrana_kasa = symbols_credits[s0];
-	          		 }else if(s0 == s1){
-	          			 wygrana_kasa = (symbols_credits[s0])/3;
-	          		 }else if(s1 == s2){
-	          			 wygrana_kasa = (symbols_credits[s1])/3;
-	          		 }else if(s0 == s2){
-	          			 wygrana_kasa = (symbols_credits[s0])/3;
-	          		 }
+		  	                           if(beben[i].pixel_offset >= 32){
+		  	                               beben[i].pixel_offset =  0;
+		  	                               beben[i].obecny_symbol = beben[i].nas_symbol;
+		  	                               beben[i].nas_symbol = rand() % 7;
+		  	                           }
+		  	                       }
+		  	          		 }
 
-	          		 if(wygrana_kasa > 0){
+		  	                   int symbol_obecny_y = beben[i].pixel_offset + 16;
+		  	                   int symbol_nastepny_y = symbol_obecny_y - 32;
 
-	          			 credits += wygrana_kasa;
+		  	                   ssd1306_DrawBitmap(beben[i].x_poz, symbol_obecny_y, epd_bitmap_allArray[beben[i].obecny_symbol], 32, 32, White);
+		  	                   ssd1306_DrawBitmap(beben[i].x_poz, symbol_nastepny_y, epd_bitmap_allArray[beben[i].nas_symbol], 32, 32, White);
 
-	          			 ssd1306_FillRectangle(10, 18, 108, 48, White);
-	          			 sprintf(buffor,"WIN %d", wygrana_kasa );
+		  	          	 }
 
-	          			 int x_pos = 35;
-	          			 if(wygrana_kasa > 99) x_pos = 25;
+		  	          	 if(gra_aktywna == 1 && stan_bebna[0] == 0 && stan_bebna[1] == 0 && stan_bebna[2] == 0 && brak_kasy == 0){
 
-	          			 ssd1306_SetCursor(x_pos, 28);
-	          			 ssd1306_WriteString(buffor, Font_11x18, Black);
-	          			 ssd1306_UpdateScreen();
+		  	          		 int s0 = beben[0].obecny_symbol;
+		  	          		 int s1 = beben[1].obecny_symbol;
+		  	          		 int s2 = beben[2].obecny_symbol;
 
-	          			 HAL_Delay(2500);
-	          		 }else{
-	          			 HAL_Delay(500);
-	          		 }
+		  	          		 int wygrana_kasa = 0;
 
-	          		 gra_aktywna = 0;
+		  	          		 if(s0 == s1 && s1 == s2){
+		  	          			 wygrana_kasa = symbols_credits[s0];
+		  	          		 }else if(s0 == s1){
+		  	          			 wygrana_kasa = (symbols_credits[s0])/3;
+		  	          		 }else if(s1 == s2){
+		  	          			 wygrana_kasa = (symbols_credits[s1])/3;
+		  	          		 }else if(s0 == s2){
+		  	          			 wygrana_kasa = (symbols_credits[s0])/3;
+		  	          		 }
 
-	          	 }else if(brak_kasy == 1){
-	          		 ssd1306_FillRectangle(10, 18, 108, 32, White);
+		  	          		 if(wygrana_kasa > 0){
 
-	          		 ssd1306_SetCursor(25, 22);
-	          		 ssd1306_WriteString("BRAK KASY!", Font_7x10, Black);
+		  	          			 credits += wygrana_kasa;
 
-	          		 ssd1306_SetCursor(20, 35);
-	          		 ssd1306_WriteString("Wplac monete", Font_6x8, Black);
-	          	 }
+		  	          			 ssd1306_FillRectangle(10, 18, 108, 48, White);
+		  	          			 sprintf(buffor,"WIN %d", wygrana_kasa );
+
+		  	          			 int x_pos = 35;
+		  	          			 if(wygrana_kasa > 99) x_pos = 25;
+
+		  	          			 ssd1306_SetCursor(x_pos, 28);
+		  	          			 ssd1306_WriteString(buffor, Font_11x18, Black);
+		  	          			 ssd1306_UpdateScreen();
+
+		  	          			 HAL_Delay(2500);
+		  	          		 }else{
+		  	          			 HAL_Delay(500);
+		  	          		 }
+
+		  	          		 gra_aktywna = 0;
+
+		  	          	 }else if(brak_kasy == 1){
+		  	          		 ssd1306_FillRectangle(10, 18, 108, 32, White);
+
+		  	          		 ssd1306_SetCursor(25, 22);
+		  	          		 ssd1306_WriteString("BRAK KASY!", Font_7x10, Black);
+
+		  	          		 ssd1306_SetCursor(20, 35);
+		  	          		 ssd1306_WriteString("Wplac monete", Font_6x8, Black);
+		  	          	 }
 
 
 
-	          	 ssd1306_UpdateScreen();
+		  	          	 ssd1306_UpdateScreen();
+	  case STATE_AUTHORS:
+		  ssd1306_SetCursor(0, 0);
+	      ssd1306_WriteString("AUTORZY:", Font_7x10, White);
+	      ssd1306_SetCursor(0, 20);
+	      ssd1306_WriteString("- Jakub Matusiewicz", Font_6x8, White);
+	      ssd1306_SetCursor(0, 30);
+	      ssd1306_WriteString("Mateusz Tręda", Font_6x8, White);
+	      break;
+	  case STATE_DESC:
+	      ssd1306_WriteString("Opis gry...", Font_6x8, White);
+	      break;
+
+	  case STATE_HIGHSCORES:
+	      ssd1306_WriteString("1. AAA - 5000", Font_6x8, White);
+	      ssd1306_WriteString("2. BBB - 3000", Font_6x8, White);
+	      break;
+	      }
+	  ssd1306_UpdateScreen();
+	  }
+
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
-}
 
 /**
   * @brief System Clock Configuration
