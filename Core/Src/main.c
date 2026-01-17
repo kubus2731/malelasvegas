@@ -28,6 +28,14 @@
 #include "stdbool.h"
 #include "string.h"
 #include "symbols.h"
+//@@
+#include <ctype.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <string.h>
+#include <stdio.h>
+#include "stm32l4xx_hal.h"
+//@@
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -52,6 +60,46 @@ SPI_HandleTypeDef hspi1;
 
 UART_HandleTypeDef huart2;
 
+//@@
+static void MX_USART2_UART_Init(void);
+
+#ifdef __GNUC__
+#define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
+#define GETCHAR_PROTOTYPE int __io_getchar(void)
+#else
+#define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
+#define GETCHAR_PROTOTYPE int fgetc(FILE *f)
+#endif
+
+PUTCHAR_PROTOTYPE
+{
+	HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
+	return ch;
+}
+
+GETCHAR_PROTOTYPE
+{
+	uint8_t ch = 0;
+	__HAL_UART_CLEAR_OREFLAG(&huart2);
+	HAL_UART_Receive(&huart2, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
+	HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
+	return ch;
+}
+
+#define MAX_USERS               8
+#define USERNAME_LEN            16
+#define FLASH_USERS_ADDR        0x080E0000U
+#define FLASH_USER_START_PAGE   511
+#define FLASH_USER_NBPAGES      1
+#define FLASH_USER_START_ADDR   0x080FF800U
+#define CMD_BUF_SIZE            40
+
+char cmd_buffer[CMD_BUF_SIZE + 1];
+uint8_t cmd_index = 0;
+char* user[] = {"defUser"};
+unsigned int credit_balance = 0;
+unsigned short tab[] = {0,1,2,3,4};//zapisac tabele do flash memeory
+//@@
 /* USER CODE BEGIN PV */
 volatile int credits = 100;
 
@@ -127,7 +175,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
         }
     }
 }
-
+//@@
+//error: redefinition of '__io_getchar'
+/*
 int __io_putchar(int ch) {
     HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
     return ch;
@@ -138,8 +188,8 @@ int __io_getchar(void){
 	HAL_UART_Receive(&huart2, &ch, 1, HAL_MAX_DELAY);
 	HAL_UART_Transmit(&huart2, &ch, 1, HAL_MAX_DELAY);
 	return (int)ch;
-}
-
+}*/
+//@@
 int fputc(int ch, FILE *f) {
     return __io_putchar(ch);
 }
@@ -147,6 +197,196 @@ int fputc(int ch, FILE *f) {
 int fgetc(FILE *f) {
     return __io_getchar();
 }
+
+//@@
+
+bool Flash_WriteBalance(uint32_t balance)
+{
+    HAL_FLASH_Unlock();
+
+    // Wymaż stronę
+    FLASH_EraseInitTypeDef EraseInitStruct;
+    uint32_t PageError = 0;
+
+    EraseInitStruct.TypeErase = FLASH_TYPEERASE_PAGES;
+    EraseInitStruct.Banks     = FLASH_BANK_1;
+    EraseInitStruct.Page      = FLASH_USER_START_PAGE;
+    EraseInitStruct.NbPages   = FLASH_USER_NBPAGES;
+
+    if(HAL_FLASHEx_Erase(&EraseInitStruct, &PageError) != HAL_OK)
+    {
+        HAL_FLASH_Lock();
+        return false;
+    }
+
+    // Flash wymaga zapisu double word = 64-bit
+    uint64_t data64 = (uint64_t)balance; // dolne 32-bit = saldo, górne 32-bit = 0
+
+    if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, FLASH_USER_START_ADDR, data64) != HAL_OK)
+    {
+        HAL_FLASH_Lock();
+        return false;
+    }
+
+    HAL_FLASH_Lock();
+    return true;
+}
+
+uint32_t Flash_ReadBalance(void)
+{
+    uint64_t value = *(uint64_t*)FLASH_USER_START_ADDR;
+    if(value == 0xFFFFFFFFFFFFFFFF) return 0; // Flash nie była jeszcze zapisana
+    return (uint32_t)(value & 0xFFFFFFFF);   // bierzemy dolne 32-bit
+}
+
+void GetCommand(void)
+{
+    uint8_t ch;
+    cmd_index = 0;
+    memset(cmd_buffer, 0, sizeof(cmd_buffer));
+    while(1)
+    {
+        HAL_UART_Receive(&huart2, &ch, 1, HAL_MAX_DELAY);
+        // ESC sequence (strzałki)
+        if(ch == 27) // ESC
+        {
+        	uint8_t seq[2];
+            HAL_UART_Receive(&huart2, &seq[0], 1, HAL_MAX_DELAY);
+            HAL_UART_Receive(&huart2, &seq[1], 1, HAL_MAX_DELAY);
+            continue; // zignoruj escape
+        }
+        //enter
+        if(ch == '\r' || ch == '\n')
+        {
+            printf("\r\n"); // przejście do nowej linii
+            fflush(stdout);
+            cmd_buffer[cmd_index] = '\0'; // zakończ string
+            break;
+        }
+        else if(ch == 0x08 || ch == 127) // 0x08 = ASCII backspace, 127 = DEL
+        {
+            if(cmd_index > 0)
+            {
+                cmd_index--;
+                cmd_buffer[cmd_index] = '\0';
+                printf("\b \b");
+                fflush(stdout);
+            }
+        }
+        else
+        {
+            if(cmd_index < CMD_BUF_SIZE)
+            {
+                cmd_buffer[cmd_index++] = ch;
+                printf("%c", ch);
+                fflush(stdout);
+            }
+            else
+            {
+                //
+            }
+        }
+    }
+}
+
+bool CheckCommand(const char* cmd)
+{
+	if ((strcmp(cmd, '\r') == 0) || (strcmp(cmd, '\n') == 0))
+	{
+		//Skip
+		return false;
+	}
+    if(strcmp(cmd, "help -h") == 0)
+    {
+    	//Here display all usefull commands
+        printf("Usefull commands:\r\n");
+        printf("\r\n");
+        printf("help -h - print a list of commands used on software\r\n");
+        printf("balance - prints an actual cash stored in Flash memory\r\n");
+        printf("deposit <num> - deposits an number of cash from user\r\n");
+        printf("whoami - prints an user name\r\n");
+        printf("setuser <name> - change and save username\r\n");
+        fflush(stdout);
+        return true;
+    }
+    if(strcmp(cmd, "balance") == 0)
+    {
+    	printf("User cash balance: %u\r\n", credit_balance);
+    	fflush(stdout);
+    	return true;
+    }
+    if(strncmp(cmd, "deposit ", 8) == 0)
+    {
+        const char* num_str = cmd + 8;//cut 8 characters
+        char* endptr;
+        long amount = strtol(num_str, &endptr, 10);
+        // numbler validation
+        if(*endptr != '\0' || amount < 0)
+        {
+            printf("Invalid value: '%s'\r\n", num_str);
+            fflush(stdout);
+            return false;
+        }
+        credit_balance += amount;
+
+        if (Flash_WriteBalance(credit_balance))
+        {
+            printf("Deposited: %ld\r\n", amount);
+        }
+        else
+        {
+            printf("Flash write error!\r\n");
+        }
+        fflush(stdout);
+        return true;
+    }
+    if(strcmp(cmd, "whoami") == 0)
+    {
+    	printf("%s\r\n", user);
+        return true;
+    }
+    if (strncmp(cmd, "setuser ", 8) == 0)
+    {
+        /*const char* name = cmd + 8;
+        if (strlen(name) == 0 || strlen(name) >= USERNAME_LEN)
+        {
+            printf("Invalid username length (1-%d)\r\n", USERNAME_LEN - 1);
+            return false;
+        }
+        strcpy(user, name);
+
+        if (Flash_WriteUserData(credit_balance, user))
+        {
+            printf("Username saved: %s\r\n", user);
+        }
+        else
+        {
+            printf("Flash write error!\r\n");
+        }*/
+        return true;
+    }
+
+    printf("command not found : '%s'\r\n", cmd);
+    fflush(stdout);
+    return false;
+}
+
+
+void DisplayTitle()
+{
+	printf("                     CasinoOS Terminal v1.0.7 \r\n");
+	printf("            In luck we trust, in probability we pray \r\n");
+}
+void DisplaySeparationBorder()
+{
+	printf("------------------------------------------------------- \r\n");
+}
+void DisplayRequireInput()
+{
+	 printf("𝓬𝓪𝓼𝓲𝓷𝓸@𝓒𝓪𝓼𝓲𝓷𝓸𝓞𝓢:~$ ");
+	 fflush(stdout);
+}
+//@@
 /* USER CODE END 0 */
 
 /**
@@ -163,8 +403,10 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  //@@
   HAL_Init();
-
+  setvbuf(stdin, NULL ,_IONBF, 0);
+  //@@
   /* USER CODE BEGIN Init */
 
   /* USER CODE END Init */
@@ -182,6 +424,36 @@ int main(void)
   MX_I2C1_Init();
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
+  //@@
+  srand(HAL_GetTick());//Random Generator
+  HAL_Delay(200);
+  printf("\033[2J\033[H"); // Clear screen and move cursor to top-left
+  HAL_Delay(200);
+  credit_balance = Flash_ReadBalance();
+  HAL_Delay(200);
+  DisplayTitle();
+    DisplaySeparationBorder();
+    printf("System status  : ONLINE \r\n");
+    printf("RNG engine     : SEEDED \r\n");
+    printf("Credit balance : 000000 \r\n");
+    printf("User access    : %s \r\n",user);
+    DisplaySeparationBorder();
+
+    while(1)
+      {
+    	  DisplayRequireInput();
+    	  GetCommand();
+    	  if(CheckCommand(cmd_buffer))
+    	  {
+    	        //fflush(stdout);
+    	  }
+    	  else
+    	  {
+    	        // komenda niepoprawna – już wypisane w CheckCommand
+    	  }
+      }
+  //@@
+
   char buffor[40];
 
       // inicjalizacja wyświetlacza
