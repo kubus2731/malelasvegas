@@ -1,4 +1,4 @@
-# 🎰 Male Las Vegas - Jednoręki Bandyta na STM32
+# 🎰 Małe Las Vegas - Jednoręki Bandyta na STM32
 
 Projekt gry hazardowej typu "Slot Machine" zrealizowany na mikrokontrolerze **STM32L476RG**. Gra wykorzystuje wyświetlacz OLED, sterowanie przyciskiem oraz interfejs UART do zarządzania menu.
 
