@@ -4,7 +4,7 @@ Projekt gry hazardowej typu "Slot Machine" zrealizowany na mikrokontrolerze **ST
 
 ## 🚀 Funkcjonalności
 
-* **Animacja Bębnów:** Płynna, losowa animacja 3 bębnów z symbolami (777, Owoce, Bar).
+* **Animacja Bębnów:** Płynna, losowa animacja 3 bębnów z symbolami (777, Owoce, Bar lub Diament).
 * **System Kredytów:** Obliczanie wygranych na podstawie tabeli wypłat (Jackpot, Pary).
 * **Menu Systemowe:** Nawigacja po ekranach (Gra, Autorzy, Opis, Wyniki).
 * **Zdalne Sterowanie:** Możliwość sterowania grą i menu poprzez terminal UART.
