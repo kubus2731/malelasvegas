@@ -269,7 +269,9 @@ bool CheckCommand(const char* cmd)
 // Funkcja do zaznaczenia wybranej opcji w menu
 void DrawMenuLine(int y, int index, char* text){
 	if(menu_position == index){
-		ssd1306_FillRectangle(0, y - 1, 128, 11, White);
+		ssd1306_FillRectangle(0, 1, 128, 10, White);
+		ssd1306_SetCursor(20, 2);
+		ssd1306_WriteString("MALE LAS VEGAS", Font_6x8, Black);
 
 		ssd1306_SetCursor(10, y);
 
@@ -297,9 +299,12 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
             rng_initialized = 1;
         }
 
-        if(game_active == 0){
+        if(currentState == STATE_GAME && game_active == 0){
             if(credits > 0){
                 credits--;
+
+                Flash_WriteBalance(credits);
+
                 no_money = 0;
                 game_active = 1;
 
@@ -383,6 +388,15 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         HAL_UART_Receive_IT(&huart2, rx_data, 1);
     }
 }
+
+// Funkcja do odwracania kolorów (Inwersja)
+void SetDisplayInverse(uint8_t inverse) {
+    if (inverse) {
+        ssd1306_WriteCommand(0xA7);
+    } else {
+        ssd1306_WriteCommand(0xA6);
+    }
+}
 /* USER CODE END 0 */
 
 /**
@@ -463,9 +477,9 @@ int main(void)
 	  	  	  	        {
 
 	  	  	  	            case STATE_MENU:
-	  	  	  	            	ssd1306_FillRectangle(0, 0, 128, 12, White);
-	  	  	  	                ssd1306_SetCursor(20, 2);
-	  	  	  	                ssd1306_WriteString("MALE LAS VEGAS", Font_6x8, Black);
+//	  	  	  	            	ssd1306_FillRectangle(0, 0, 128, 10, White);
+//	  	  	  	                ssd1306_SetCursor(20, 2);
+//	  	  	  	                ssd1306_WriteString("MALE LAS VEGAS", Font_6x8, Black);
 
 	  	  	  	                DrawMenuLine(16,0,"1. Game");
 	  	  	  	                DrawMenuLine(27,1,"2. Authors");
@@ -490,8 +504,8 @@ int main(void)
 
 	  	  	  	                for(int i=0; i < 3; i++){
 	  	  	  	                    if(reel_state[i] == 1){
-	  	  	  	                        uint32_t dodatkowe_opoznienie = i * 1000;
-	  	  	  	                        if(HAL_GetTick() - start_time > (duration + dodatkowe_opoznienie)){
+	  	  	  	                        uint32_t extra_delay = i * 1000;
+	  	  	  	                        if(HAL_GetTick() - start_time > (duration + extra_delay)){
 	  	  	  	                            if(reel[i].pixel_offset == 0){
 	  	  	  	                                reel_state[i] = 0;
 	  	  	  	                            }
@@ -505,10 +519,10 @@ int main(void)
 	  	  	  	                            }
 	  	  	  	                        }
 	  	  	  	                    }
-	  	  	  	                    int symbol_obecny_y = reel[i].pixel_offset + 16;
-	  	  	  	                    int symbol_nastepny_y = symbol_obecny_y - 32;
-	  	  	  	                    ssd1306_DrawBitmap(reel[i].x_pos, symbol_obecny_y, epd_bitmap_allArray[reel[i].current_symbol], 32, 32, White);
-	  	  	  	                    ssd1306_DrawBitmap(reel[i].x_pos, symbol_nastepny_y, epd_bitmap_allArray[reel[i].next_symbol], 32, 32, White);
+	  	  	  	                    int current_symbol_y = reel[i].pixel_offset + 16;
+	  	  	  	                    int next_symbol_y = current_symbol_y - 32;
+	  	  	  	                    ssd1306_DrawBitmap(reel[i].x_pos, current_symbol_y, epd_bitmap_allArray[reel[i].current_symbol], 32, 32, White);
+	  	  	  	                    ssd1306_DrawBitmap(reel[i].x_pos, next_symbol_y, epd_bitmap_allArray[reel[i].next_symbol], 32, 32, White);
 	  	  	  	                }
 
 	  	  	  	                if(game_active == 1 && reel_state[0] == 0 && reel_state[1] == 0 && reel_state[2] == 0 && no_money == 0){
@@ -523,13 +537,32 @@ int main(void)
 	  	  	  	                    else if(s0 == s2) win = (symbols_credits[s0])/3;
 
 	  	  	  	                    if(win > 0){
-	  	  	  	                        credits += win;
+	  	  	  	                    	credits += win;
 	  	  	  	                        Flash_WriteBalance(credits);
-	  	  	  	                        ssd1306_FillRectangle(10, 18, 108, 48, White);
-	  	  	  	                        sprintf(buffor,"WIN %d", win );
-	  	  	  	                        int x_position = (win > 99) ? 25 : 35;
-	  	  	  	                        ssd1306_SetCursor(x_position, 28);
+
+	  	  	  	                        for(int k=0; k<3; k++){
+	  	  	  	                            SetDisplayInverse(1);
+	  	  	  	                            HAL_Delay(100);
+	  	  	  	                            SetDisplayInverse(0);
+	  	  	  	                            HAL_Delay(100);
+	  	  	  	                        }
+
+	  	  	  	                        ssd1306_FillRectangle(14, 15, 100, 40, White);
+
+
+	  	  	  	                        ssd1306_DrawRectangle(16, 17, 96, 36, Black);
+
+	  	  	  	                        ssd1306_SetCursor(38, 20);
+	  	  	  	                        ssd1306_WriteString("BIG WIN!", Font_6x8, Black);
+
+	  	  	  	                        sprintf(buffor, "%d", win);
+
+	  	  	  	                        int text_width = (win > 999) ? 44 : (win > 99) ? 33 : 22;
+	  	  	  	                        int x_pos = 64 - (text_width / 2);
+
+	  	  	  	                        ssd1306_SetCursor(x_pos, 32);
 	  	  	  	                        ssd1306_WriteString(buffor, Font_11x18, Black);
+
 	  	  	  	                        ssd1306_UpdateScreen();
 	  	  	  	                        HAL_Delay(2500);
 	  	  	  	                    } else {
@@ -539,10 +572,13 @@ int main(void)
 	  	  	  	                }
 	  	  	  	                else if(no_money == 1){
 	  	  	  	                    ssd1306_FillRectangle(10, 18, 108, 32, White);
-	  	  	  	                    ssd1306_SetCursor(25, 22);
+	  	  	  	                    ssd1306_SetCursor(25, 20);
 	  	  	  	                    ssd1306_WriteString("OUT OF MONEY!", Font_7x10, Black);
 	  	  	  	                    ssd1306_SetCursor(20, 35);
 	  	  	  	                    ssd1306_WriteString("Deposit money :)", Font_6x8, Black);
+	  	  	  	                    ssd1306_UpdateScreen();
+	  	  	  	                    HAL_Delay(2500);
+	  	  	  	                    no_money = 0;
 	  	  	  	                }
 	  	  	  	                break;
 
@@ -553,8 +589,23 @@ int main(void)
 	  	  	  	                break;
 
 	  	  	  	            case STATE_DESC:
-	  	  	  	                ssd1306_SetCursor(0, 0); ssd1306_WriteString("Opis gry...", Font_6x8, White);
-	  	  	  	                break;
+	  	  	  	      				ssd1306_FillRectangle(0, 0, 128, 12, White);
+	  	  	  	      				ssd1306_SetCursor(35, 2);
+	  	  	  	      				ssd1306_WriteString("GAME RULES:", Font_6x8, Black);
+
+	  	  	  	      				ssd1306_SetCursor(2, 16);
+	  	  	  	      				ssd1306_WriteString("- Press blue button to SPIN", Font_6x8, White);
+
+	  	  	  	      				ssd1306_SetCursor(2, 30);
+	  	  	  	      				ssd1306_WriteString("- 3 symbols = MAX WIN", Font_6x8, White);
+
+	  	  	  	      				ssd1306_SetCursor(2, 42);
+	  	  	  	      				ssd1306_WriteString("- 2 symbols = 33% WIN", Font_6x8, White);
+
+	  	  	  	      				ssd1306_FillRectangle(80, 54, 128, 64, Black);
+	  	  	  	      				ssd1306_SetCursor(85, 55);
+	  	  	  	      				ssd1306_WriteString("[q] Back to menu", Font_6x8, White);
+	  	  	  	      				break;
 
 	  	  	  	            case STATE_HIGHSCORES:
 	  	  	  	                ssd1306_SetCursor(0, 0); ssd1306_WriteString("Accounts:", Font_7x10, White);
