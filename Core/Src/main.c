@@ -38,7 +38,8 @@ typedef enum {
     STATE_GAME,
     STATE_AUTHORS,
     STATE_DESC,
-    STATE_HIGHSCORES
+    STATE_HIGHSCORES,
+	STATE_NONE
 } SystemState;
 /* USER CODE END PTD */
 
@@ -120,7 +121,7 @@ volatile uint8_t no_money = 0;
 int speed = 4;
 
 //ZMIENNE SYSTEMOWE
-volatile SystemState currentState = STATE_MENU;
+volatile SystemState currentState = STATE_NONE;
 volatile int menu_position = 0;
 
 //ZMIENNE TERMINALA
@@ -323,8 +324,8 @@ void DrawMenuLine(int y, int index, char* text){
 //Obsługa przerwań
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-	printf("debug1");fflush(stdout);
-	return;
+	//printf("debug1");fflush(stdout);
+	//return;
 	// //////////////////////
     if(GPIO_Pin == B1_Pin)
     {
@@ -363,10 +364,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 //PRZERWANIE OD UART (Sterowanie)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	//each time i press the button
-	//printf("debug1");fflush(stdout);
-
-		// //////////////////////
+	//each time i press the button+=_++++
     if (huart->Instance == USART2)
     {
         char c = (char)rx_data[0];
@@ -410,29 +408,44 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         // 2. TERMINAL (Wykonujemy TYLKO jeśli to nie była nawigacja)
         if (is_nav_command == 0)
         {
-            HAL_UART_Transmit(&huart2, &rx_data[0], 1, 10); // Echo znaku
-
-            if (c == '\r' || c == '\n')
+           // HAL_UART_Transmit(&huart2, &rx_data[0], 1, 10); // Echo znaku//@@
+            if (c == '\r' || c == '\n')//@@
             {
                 printf("\r\n"); // Nowa linia
                 cmd_buffer[cmd_index] = '\0';
-                if (cmd_index > 0) {
+                if (cmd_index > 0)
+                {
                     CheckCommand(cmd_buffer);
                     DisplayTerminalPrompt();
-                } else {
+                }
+                else
+                {
                     DisplayTerminalPrompt();
                 }
                 cmd_index = 0; // Reset bufora po Enterze
             }
-            else if (c == 0x08 || c == 127) { // Backspace
-                if (cmd_index > 0) cmd_index--;
+
+            else if (c == 0x08 || c == 127)//@@
+            { // Backspace
+                if (cmd_index > 0)
+                {
+                	cmd_index--;
+                	cmd_buffer[cmd_index] = '\0';
+                	printf("\b \b");
+                	fflush(stdout);
+                }
             }
-            else {
-                if (cmd_index < CMD_BUF_SIZE) cmd_buffer[cmd_index++] = c;
+            else//@@
+            {
+                if (cmd_index < CMD_BUF_SIZE)//@@
+                {
+                	cmd_buffer[cmd_index++] = c;
+                	printf("%c", c);
+                	fflush(stdout);
+                }
             }
         }
         // Ważne: wznawiamy nasłuchiwanie
-        //GetCommand();
         HAL_UART_Receive_IT(&huart2, rx_data, 1);
     }
 }
