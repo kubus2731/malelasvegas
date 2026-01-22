@@ -13,7 +13,7 @@ Projekt gry hazardowej typu "Slot Machine" zrealizowany na mikrokontrolerze **ST
 ## 🛠️ Sprzęt (Hardware)
 
 * **Mikrokontroler:** STM32L476RG (Nucleo-64)
-* **Wyświetlacz:** OLED 0.96" SSD1306 (Interfejs **SPI**)
+* **Wyświetlacz:** OLED 2.42" SSD1309 (Interfejs **SPI**)
 * **Ekspander GPIO:** SX1509 (Interfejs I2C)
 * **Sterowanie:**
     * Przycisk User Button (B1) - Start gry
