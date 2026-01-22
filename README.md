@@ -27,7 +27,7 @@ Projekt gry hazardowej typu "Slot Machine" zrealizowany na mikrokontrolerze **ST
 | **GND** | GND | Masa |
 | **VCC** | 3.3V | Zasilanie |
 | **D0 (SCK)** | PA5 | SPI1 Clock |
-| **D1 (MOSI)** | PA7 | SPI1 MOSI |
+| **D1 (SDA)** | PA7 | SPI1 SDA |
 | **RES** | PA9 | Reset |
 | **DC** | PC7 | Data/Command |
 | **CS** | PB6 | Chip Select |
@@ -40,8 +40,8 @@ Projekt gry hazardowej typu "Slot Machine" zrealizowany na mikrokontrolerze **ST
 
 Podłącz płytkę do komputera i otwórz terminal (np. Putty/RealTerm) na porcie COM ST-Linka (115200 bps).
 
-* `w` - Góra (Menu)
-* `s` - Dół (Menu)
+* `a` - Góra (Menu)
+* `d` - Dół (Menu)
 * `e` - Wybierz / Zatwierdź
 * `q` - Powrót do menu głównego
 
