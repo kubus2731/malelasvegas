@@ -73,11 +73,11 @@ char user_name[16] = "defUser";
 
 //ZMIENNE GRY
 int symbols_credits[7] = {1000,500,20,300,250,20,100};
-int stan_bebna[3] = {0, 0, 0};
-volatile uint8_t gra_aktywna = 0;
-uint32_t czas_startu = 0;
-uint32_t czas_trwania = 0;
-volatile uint8_t brak_kasy = 0;
+int reel_state[3] = {0, 0, 0};
+volatile uint8_t game_active = 0;
+uint32_t start_time = 0;
+uint32_t duration = 0;
+volatile uint8_t no_money = 0;
 int speed = 4;
 
 //ZMIENNE SYSTEMOWE
@@ -111,14 +111,14 @@ int __io_putchar(int ch) {
 }
 
 typedef struct {
-    int obecny_symbol; // Indeks symbolu, który jest teraz na środku (0-6)
-    int nas_symbol;    // Indeks symbolu, który wjeżdża z góry (0-6)
+    int current_symbol; // Indeks symbolu, który jest teraz na środku (0-6)
+    int next_symbol;    // Indeks symbolu, który wjeżdża z góry (0-6)
     int pixel_offset;   // Przesunięcie w pikselach (od 0 do 32)
-    int x_poz;          // Pozycja X tego bębna na ekranie (8, 48 lub 88)
-} bebenki;
+    int x_pos;          // Pozycja X tego bębna na ekranie (8, 48 lub 88)
+} reels;
 
 // Inicjalizacja trzech bębnów
-bebenki beben[3] = {
+reels reel[3] = {
     {0, 1, 0, 8},  // Bęben 1
     {0, 1, 0, 48}, // Bęben 2
     {0, 1, 0, 88}  // Bęben 3
@@ -160,8 +160,8 @@ bool Flash_WriteBalance(uint32_t balance)
 uint32_t Flash_ReadBalance(void)
 {
     uint64_t value = *(uint64_t*)FLASH_USER_START_ADDR;
-    if(value == 0xFFFFFFFFFFFFFFFF) return 0; // Flash nie była jeszcze zapisana
-    return (uint32_t)(value & 0xFFFFFFFF);   // bierzemy dolne 32-bit
+    if(value == 0xFFFFFFFFFFFFFFFF) return 0;
+    return (uint32_t)(value & 0xFFFFFFFF);
 }
 
 void DisplayTerminalPrompt(void)
@@ -182,8 +182,8 @@ bool CheckCommand(const char* cmd)
         printf("help - print a list of commands used on software\r\n");
         printf("balance - prints an actual cash stored in Flash memory\r\n");
         printf("deposit <num> - deposits an number of cash to user\r\n");
-        printf("vithdraw <num> - withdraw an number of cash from user\r\n");
-        printf("vhoami - prints an user name\r\n");
+        printf("withdraw <num> - withdraw an number of cash from user\r\n");
+        printf("whoami - prints an user name\r\n");
         printf("setuser <name> - change and save username\r\n");
         return true;
     }
@@ -217,7 +217,7 @@ bool CheckCommand(const char* cmd)
         return true;
     }
 
-    if(strncmp(cmd, "vithdraw", 8) == 0)
+    if(strncmp(cmd, "withdraw", 8) == 0)
         {
             const char* num_str = cmd + 8;
             int amount = atoi(num_str);
@@ -240,7 +240,7 @@ bool CheckCommand(const char* cmd)
             return true;
         }
 
-    if(strcmp(cmd, "vhoami") == 0)
+    if(strcmp(cmd, "whoami") == 0)
     {
         printf("%s\r\n", user_name);
         return true;
@@ -254,7 +254,7 @@ bool CheckCommand(const char* cmd)
         	strncpy(user_name, name_ptr, USERNAME_LEN - 1);
 
         	user_name[USERNAME_LEN - 1] = '\0';
-            // Tutaj symulujemy zapis nazwy (sukces), w oryginale było zakomentowane
+            // Tutaj symulujemy zapis nazwy (sukces)
             printf("Username saved: %s\r\n", user_name);
         } else {
             printf("Invalid username!\r\n");
@@ -266,37 +266,52 @@ bool CheckCommand(const char* cmd)
     return false;
 }
 
+// Funkcja do zaznaczenia wybranej opcji w menu
+void DrawMenuLine(int y, int index, char* text){
+	if(menu_position == index){
+		ssd1306_FillRectangle(0, y - 1, 128, 11, White);
+
+		ssd1306_SetCursor(10, y);
+
+		ssd1306_WriteString(text, Font_6x8, Black);
+	}else{
+		ssd1306_SetCursor(10, y);
+
+		ssd1306_WriteString(text, Font_6x8, White);
+	}
+}
+
 //Obsługa przerwań
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
     if(GPIO_Pin == B1_Pin)
     {
-        static uint32_t ostatni_click = 0;
+        static uint32_t last_click = 0;
 
-        static uint8_t rng_zainicjowane = 0;
+        static uint8_t rng_initialized = 0;
 
-        if(HAL_GetTick() - ostatni_click < 500) return;
-        ostatni_click = HAL_GetTick();
+        if(HAL_GetTick() - last_click < 500) return;
+        last_click = HAL_GetTick();
 
-        if(rng_zainicjowane == 0) {
+        if(rng_initialized == 0) {
             srand(HAL_GetTick());
-            rng_zainicjowane = 1;
+            rng_initialized = 1;
         }
 
-        if(gra_aktywna == 0){
+        if(game_active == 0){
             if(credits > 0){
                 credits--;
-                brak_kasy = 0;
-                gra_aktywna = 1;
+                no_money = 0;
+                game_active = 1;
 
                 for(int i=0; i<3; i++){
-                    stan_bebna[i] = 1;
+                    reel_state[i] = 1;
                 }
 
-                czas_startu = HAL_GetTick();
+                start_time = HAL_GetTick();
 
-                czas_trwania = (rand() % 4000) + 3000;
+                duration = (rand() % 4000) + 3000;
             } else {
-                brak_kasy = 1;
+                no_money = 1;
             }
         }
     }
@@ -314,16 +329,16 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         if (cmd_index == 0) {
             if (c == 'q') {
                 currentState = STATE_MENU;
-                gra_aktywna = 0;
+                game_active = 0;
                 is_nav_command = 1; // Zaznaczamy, że obsłużono jako nawigację
             }
             else if (currentState == STATE_MENU) {
-                if (c == 'w') {
+                if (c == 'a') {
                     menu_position--;
                     if(menu_position < 0) menu_position = 3;
                     is_nav_command = 1;
                 }
-                else if (c == 's') {
+                else if (c == 'd') {
                     menu_position++;
                     if(menu_position > 3) menu_position = 0;
                     is_nav_command = 1;
@@ -403,7 +418,7 @@ int main(void)
   MX_I2C1_Init();
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
-  setvbuf(stdout, NULL, _IONBF, 0); // !!! NAPRAWA BRAKU TEKSTU
+  setvbuf(stdout, NULL, _IONBF, 0);
 
     char buffor[40];
 
@@ -414,15 +429,14 @@ int main(void)
     // Wczytanie stanu konta
     credits = Flash_ReadBalance();
 
-    // 2. WYMUSZENIE PRIORYTETU PRZERWANIA (Naprawa zawieszania)
-    // Ustawiamy priorytet UART na 2 (niższy niż zegar SysTick, który ma 0)
-    HAL_NVIC_SetPriority(USART2_IRQn, 2, 0); // !!! NAPRAWA ZAWIESZANIA
+    // 2. WYMUSZENIE PRIORYTETU PRZERWANIA
+    HAL_NVIC_SetPriority(USART2_IRQn, 2, 0);
     HAL_NVIC_EnableIRQ(USART2_IRQn);
 
-    // 3. Test bezpośredni (żeby mieć pewność, że kabel działa)
+    // 3. Test bezpośredni
     HAL_UART_Transmit(&huart2, (uint8_t*)"\r\nSYSTEM START\r\n", 14, 100);
 
-    // POWITANIE W TERMINALU (Teksty Kolegi)
+    // POWITANIE W TERMINALU
     printf("\033[2J\033[H"); // Clear screen
     printf("                     CasinoOS Terminal v1.0.7 \r\n");
     printf("            In luck we trust, in probability we pray \r\n");
@@ -449,22 +463,21 @@ int main(void)
 	  	  	  	        {
 
 	  	  	  	            case STATE_MENU:
-	  	  	  	                ssd1306_SetCursor(20, 0);
-	  	  	  	                ssd1306_WriteString("MALE LAS VEGAS", Font_7x10, White);
+	  	  	  	            	ssd1306_FillRectangle(0, 0, 128, 12, White);
+	  	  	  	                ssd1306_SetCursor(20, 2);
+	  	  	  	                ssd1306_WriteString("MALE LAS VEGAS", Font_6x8, Black);
 
-	  	  	  	                ssd1306_SetCursor(10, 15);
-	  	  	  	                ssd1306_WriteString(menu_position == 0 ? "> 1. Gra" : "  1. Gra", Font_6x8, White);
-	  	  	  	                ssd1306_SetCursor(10, 25);
-	  	  	  	                ssd1306_WriteString(menu_position == 1 ? "> 2. Autorzy" : "  2. Autorzy", Font_6x8, White);
-	  	  	  	                ssd1306_SetCursor(10, 35);
-	  	  	  	                ssd1306_WriteString(menu_position == 2 ? "> 3. Opis" : "  3. Opis", Font_6x8, White);
-	  	  	  	                ssd1306_SetCursor(10, 45);
-	  	  	  	                ssd1306_WriteString(menu_position == 3 ? "> 4. Uzytkownicy" : "  4. Uzytkownicy", Font_6x8, White);
+	  	  	  	                DrawMenuLine(16,0,"1. Game");
+	  	  	  	                DrawMenuLine(27,1,"2. Authors");
+	  	  	  	                DrawMenuLine(38, 2,"3. About game");
+	  	  	  	                DrawMenuLine(49,3,"4. Accounts");
+
+	  	  	  	                ssd1306_DrawRectangle(0, 13, 127, 63, White);
 	  	  	  	                break;
 
 	  	  	  	            case STATE_GAME:
 	  	  	  	                ssd1306_SetCursor(0, 0);
-	  	  	  	                sprintf(buffor, "Kredyty: %d", credits);
+	  	  	  	                sprintf(buffor, "Credits: %d", credits);
 	  	  	  	                ssd1306_WriteString(buffor, Font_6x8, White);
 
 	  	  	  	                ssd1306_SetCursor(80, 0);
@@ -476,65 +489,65 @@ int main(void)
 	  	  	  	                ssd1306_SetCursor(120, 27); ssd1306_WriteString("<", Font_7x10, White);
 
 	  	  	  	                for(int i=0; i < 3; i++){
-	  	  	  	                    if(stan_bebna[i] == 1){
+	  	  	  	                    if(reel_state[i] == 1){
 	  	  	  	                        uint32_t dodatkowe_opoznienie = i * 1000;
-	  	  	  	                        if(HAL_GetTick() - czas_startu > (czas_trwania + dodatkowe_opoznienie)){
-	  	  	  	                            if(beben[i].pixel_offset == 0){
-	  	  	  	                                stan_bebna[i] = 0;
+	  	  	  	                        if(HAL_GetTick() - start_time > (duration + dodatkowe_opoznienie)){
+	  	  	  	                            if(reel[i].pixel_offset == 0){
+	  	  	  	                                reel_state[i] = 0;
 	  	  	  	                            }
 	  	  	  	                        }
-	  	  	  	                        if(stan_bebna[i] == 1) {
-	  	  	  	                            beben[i].pixel_offset += speed;
-	  	  	  	                            if(beben[i].pixel_offset >= 32){
-	  	  	  	                                beben[i].pixel_offset = 0;
-	  	  	  	                                beben[i].obecny_symbol = beben[i].nas_symbol;
-	  	  	  	                                beben[i].nas_symbol = rand() % 7;
+	  	  	  	                        if(reel_state[i] == 1) {
+	  	  	  	                            reel[i].pixel_offset += speed;
+	  	  	  	                            if(reel[i].pixel_offset >= 32){
+	  	  	  	                                reel[i].pixel_offset = 0;
+	  	  	  	                                reel[i].current_symbol = reel[i].next_symbol;
+	  	  	  	                                reel[i].next_symbol = rand() % 7;
 	  	  	  	                            }
 	  	  	  	                        }
 	  	  	  	                    }
-	  	  	  	                    int symbol_obecny_y = beben[i].pixel_offset + 16;
+	  	  	  	                    int symbol_obecny_y = reel[i].pixel_offset + 16;
 	  	  	  	                    int symbol_nastepny_y = symbol_obecny_y - 32;
-	  	  	  	                    ssd1306_DrawBitmap(beben[i].x_poz, symbol_obecny_y, epd_bitmap_allArray[beben[i].obecny_symbol], 32, 32, White);
-	  	  	  	                    ssd1306_DrawBitmap(beben[i].x_poz, symbol_nastepny_y, epd_bitmap_allArray[beben[i].nas_symbol], 32, 32, White);
+	  	  	  	                    ssd1306_DrawBitmap(reel[i].x_pos, symbol_obecny_y, epd_bitmap_allArray[reel[i].current_symbol], 32, 32, White);
+	  	  	  	                    ssd1306_DrawBitmap(reel[i].x_pos, symbol_nastepny_y, epd_bitmap_allArray[reel[i].next_symbol], 32, 32, White);
 	  	  	  	                }
 
-	  	  	  	                if(gra_aktywna == 1 && stan_bebna[0] == 0 && stan_bebna[1] == 0 && stan_bebna[2] == 0 && brak_kasy == 0){
-	  	  	  	                    int s0 = beben[0].obecny_symbol;
-	  	  	  	                    int s1 = beben[1].obecny_symbol;
-	  	  	  	                    int s2 = beben[2].obecny_symbol;
-	  	  	  	                    int wygrana_kasa = 0;
+	  	  	  	                if(game_active == 1 && reel_state[0] == 0 && reel_state[1] == 0 && reel_state[2] == 0 && no_money == 0){
+	  	  	  	                    int s0 = reel[0].current_symbol;
+	  	  	  	                    int s1 = reel[1].current_symbol;
+	  	  	  	                    int s2 = reel[2].current_symbol;
+	  	  	  	                    int win = 0;
 
-	  	  	  	                    if(s0 == s1 && s1 == s2) wygrana_kasa = symbols_credits[s0];
-	  	  	  	                    else if(s0 == s1) wygrana_kasa = (symbols_credits[s0])/3;
-	  	  	  	                    else if(s1 == s2) wygrana_kasa = (symbols_credits[s1])/3;
-	  	  	  	                    else if(s0 == s2) wygrana_kasa = (symbols_credits[s0])/3;
+	  	  	  	                    if(s0 == s1 && s1 == s2) win = symbols_credits[s0];
+	  	  	  	                    else if(s0 == s1) win = (symbols_credits[s0])/3;
+	  	  	  	                    else if(s1 == s2) win = (symbols_credits[s1])/3;
+	  	  	  	                    else if(s0 == s2) win = (symbols_credits[s0])/3;
 
-	  	  	  	                    if(wygrana_kasa > 0){
-	  	  	  	                        credits += wygrana_kasa;
+	  	  	  	                    if(win > 0){
+	  	  	  	                        credits += win;
 	  	  	  	                        Flash_WriteBalance(credits);
 	  	  	  	                        ssd1306_FillRectangle(10, 18, 108, 48, White);
-	  	  	  	                        sprintf(buffor,"WIN %d", wygrana_kasa );
-	  	  	  	                        int x_pos = (wygrana_kasa > 99) ? 25 : 35;
-	  	  	  	                        ssd1306_SetCursor(x_pos, 28);
+	  	  	  	                        sprintf(buffor,"WIN %d", win );
+	  	  	  	                        int x_position = (win > 99) ? 25 : 35;
+	  	  	  	                        ssd1306_SetCursor(x_position, 28);
 	  	  	  	                        ssd1306_WriteString(buffor, Font_11x18, Black);
 	  	  	  	                        ssd1306_UpdateScreen();
 	  	  	  	                        HAL_Delay(2500);
 	  	  	  	                    } else {
 	  	  	  	                        HAL_Delay(500);
 	  	  	  	                    }
-	  	  	  	                    gra_aktywna = 0;
+	  	  	  	                    game_active = 0;
 	  	  	  	                }
-	  	  	  	                else if(brak_kasy == 1){
+	  	  	  	                else if(no_money == 1){
 	  	  	  	                    ssd1306_FillRectangle(10, 18, 108, 32, White);
 	  	  	  	                    ssd1306_SetCursor(25, 22);
-	  	  	  	                    ssd1306_WriteString("BRAK KASY!", Font_7x10, Black);
+	  	  	  	                    ssd1306_WriteString("OUT OF MONEY!", Font_7x10, Black);
 	  	  	  	                    ssd1306_SetCursor(20, 35);
-	  	  	  	                    ssd1306_WriteString("Wplac monete", Font_6x8, Black);
+	  	  	  	                    ssd1306_WriteString("Deposit money :)", Font_6x8, Black);
 	  	  	  	                }
 	  	  	  	                break;
 
 	  	  	  	            case STATE_AUTHORS:
-	  	  	  	                ssd1306_SetCursor(0, 0); ssd1306_WriteString("AUTORZY:", Font_7x10, White);
+	  	  	  	                ssd1306_SetCursor(0, 0); ssd1306_WriteString("Authors:", Font_7x10, White);
 	  	  	  	                ssd1306_SetCursor(0, 20); ssd1306_WriteString("- Jakub Matusiewicz", Font_6x8, White);
 	  	  	  	                ssd1306_SetCursor(0, 30); ssd1306_WriteString("- Mateusz Treda", Font_6x8, White);
 	  	  	  	                break;
@@ -544,12 +557,12 @@ int main(void)
 	  	  	  	                break;
 
 	  	  	  	            case STATE_HIGHSCORES:
-	  	  	  	                ssd1306_SetCursor(0, 0); ssd1306_WriteString("WYNIKI:", Font_7x10, White);
+	  	  	  	                ssd1306_SetCursor(0, 0); ssd1306_WriteString("Accounts:", Font_7x10, White);
 
 	  	  	  	                sprintf(buffor, "1. %s - %d", user_name, credits);
 	  	  	  	                ssd1306_SetCursor(0, 20); ssd1306_WriteString(buffor, Font_6x8, White);
 
-	  	  	  	                ssd1306_SetCursor(0, 30); ssd1306_WriteString("2. KASYNO - 1 MLN", Font_6x8, White);
+	  	  	  	                ssd1306_SetCursor(0, 30); ssd1306_WriteString("2. CASINO - 1 MLN", Font_6x8, White);
 	  	  	  	                break;
 	  	  	  	        }
 
