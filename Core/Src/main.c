@@ -377,14 +377,17 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
                 cmd_index = 0; // Reset bufora po Enterze
             }
             else if (c == 0x08 || c == 127) { // Backspace
-                if (cmd_index > 0) cmd_index--;
+                if (cmd_index > 0) {
+                    cmd_index--;
+                    uint8_t erase_seq[] = {0x08, ' ', 0x08}; 
+                    HAL_UART_Transmit(&huart2, erase_seq, 3, 10);
+                }
             }
             else {
                 if (cmd_index < CMD_BUF_SIZE) cmd_buffer[cmd_index++] = c;
             }
         }
 
-        // Ważne: wznawiamy nasłuchiwanie
         HAL_UART_Receive_IT(&huart2, rx_data, 1);
     }
 }
