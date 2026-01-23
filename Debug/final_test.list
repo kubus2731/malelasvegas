@@ -7,23 +7,23 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   CONTENTS, ALLOC, LOAD, READONLY, DATA
   1 .text         00007e74  08000190  08000190  00001190  2**4
                   CONTENTS, ALLOC, LOAD, READONLY, CODE
-  2 .rodata       0000257c  08008004  08008004  00009004  2**2
+  2 .rodata       00002570  08008004  08008004  00009004  2**2
                   CONTENTS, ALLOC, LOAD, READONLY, DATA
-  3 .ARM.extab    00000000  0800a580  0800a580  0000c108  2**0
+  3 .ARM.extab    00000000  0800a574  0800a574  0000c108  2**0
                   CONTENTS, READONLY
-  4 .ARM          00000008  0800a580  0800a580  0000b580  2**2
+  4 .ARM          00000008  0800a574  0800a574  0000b574  2**2
                   CONTENTS, ALLOC, LOAD, READONLY, DATA
-  5 .preinit_array 00000000  0800a588  0800a588  0000c108  2**0
+  5 .preinit_array 00000000  0800a57c  0800a57c  0000c108  2**0
                   CONTENTS, ALLOC, LOAD, DATA
-  6 .init_array   00000004  0800a588  0800a588  0000b588  2**2
+  6 .init_array   00000004  0800a57c  0800a57c  0000b57c  2**2
                   CONTENTS, ALLOC, LOAD, READONLY, DATA
-  7 .fini_array   00000004  0800a58c  0800a58c  0000b58c  2**2
+  7 .fini_array   00000004  0800a580  0800a580  0000b580  2**2
                   CONTENTS, ALLOC, LOAD, READONLY, DATA
-  8 .data         00000108  20000000  0800a590  0000c000  2**2
+  8 .data         00000108  20000000  0800a584  0000c000  2**2
                   CONTENTS, ALLOC, LOAD, DATA
-  9 .bss          00000710  20000108  0800a698  0000c108  2**2
+  9 .bss          00000710  20000108  0800a68c  0000c108  2**2
                   ALLOC
- 10 ._user_heap_stack 00000600  20000818  0800a698  0000c818  2**0
+ 10 ._user_heap_stack 00000600  20000818  0800a68c  0000c818  2**0
                   ALLOC
  11 .ARM.attributes 00000030  00000000  00000000  0000c108  2**0
                   CONTENTS, READONLY
@@ -945,7 +945,7 @@ void DrawMenuLine(int y, int index, char* text){
  80008fa:	2102      	movs	r1, #2
  80008fc:	2014      	movs	r0, #20
  80008fe:	f001 f951 	bl	8001ba4 <ssd1306_SetCursor>
-		ssd1306_WriteString("MALE LAS VEGAS", Font_6x8, Black);
+		ssd1306_WriteString("LITTLE LAS VEGAS", Font_6x8, Black);
  8000902:	4b14      	ldr	r3, [pc, #80]	@ (8000954 <DrawMenuLine+0x80>)
  8000904:	2200      	movs	r2, #0
  8000906:	9200      	str	r2, [sp, #0]
@@ -994,7 +994,7 @@ void DrawMenuLine(int y, int index, char* text){
  800094c:	bd80      	pop	{r7, pc}
  800094e:	bf00      	nop
  8000950:	20000280 	.word	0x20000280
- 8000954:	08009fb4 	.word	0x08009fb4
+ 8000954:	08009fa8 	.word	0x08009fa8
  8000958:	08008274 	.word	0x08008274
 
 0800095c <HAL_GPIO_EXTI_Callback>:
@@ -1428,7 +1428,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
  8000c28:	200001dc 	.word	0x200001dc
  8000c2c:	08008060 	.word	0x08008060
  8000c30:	20000288 	.word	0x20000288
- 8000c34:	08008284 	.word	0x08008284
+ 8000c34:	08008288 	.word	0x08008288
 
 08000c38 <SetDisplayInverse>:
 
@@ -1735,29 +1735,29 @@ int main(void)
  8000e22:	bf00      	nop
  8000e24:	200000b8 	.word	0x200000b8
  8000e28:	20000000 	.word	0x20000000
- 8000e2c:	08008288 	.word	0x08008288
+ 8000e2c:	0800828c 	.word	0x0800828c
  8000e30:	200001dc 	.word	0x200001dc
- 8000e34:	0800829c 	.word	0x0800829c
- 8000e38:	080082a4 	.word	0x080082a4
- 8000e3c:	080082d4 	.word	0x080082d4
- 8000e40:	0800830c 	.word	0x0800830c
- 8000e44:	08008348 	.word	0x08008348
- 8000e48:	08008364 	.word	0x08008364
- 8000e4c:	08008380 	.word	0x08008380
+ 8000e34:	080082a0 	.word	0x080082a0
+ 8000e38:	080082a8 	.word	0x080082a8
+ 8000e3c:	080082d8 	.word	0x080082d8
+ 8000e40:	08008310 	.word	0x08008310
+ 8000e44:	0800834c 	.word	0x0800834c
+ 8000e48:	08008368 	.word	0x08008368
+ 8000e4c:	08008384 	.word	0x08008384
  8000e50:	20000004 	.word	0x20000004
- 8000e54:	0800839c 	.word	0x0800839c
+ 8000e54:	080083a0 	.word	0x080083a0
  8000e58:	20000284 	.word	0x20000284
  8000e5c:	2000027d 	.word	0x2000027d
- 8000e60:	080083b4 	.word	0x080083b4
- 8000e64:	080083bc 	.word	0x080083bc
- 8000e68:	080083c8 	.word	0x080083c8
- 8000e6c:	080083d8 	.word	0x080083d8
- 8000e70:	080083e4 	.word	0x080083e4
- 8000e74:	08009fb4 	.word	0x08009fb4
- 8000e78:	080083f0 	.word	0x080083f0
- 8000e7c:	08009fc0 	.word	0x08009fc0
- 8000e80:	080083f8 	.word	0x080083f8
- 8000e84:	080083fc 	.word	0x080083fc
+ 8000e60:	080083b8 	.word	0x080083b8
+ 8000e64:	080083c0 	.word	0x080083c0
+ 8000e68:	080083cc 	.word	0x080083cc
+ 8000e6c:	080083dc 	.word	0x080083dc
+ 8000e70:	080083e8 	.word	0x080083e8
+ 8000e74:	08009fa8 	.word	0x08009fa8
+ 8000e78:	080083f4 	.word	0x080083f4
+ 8000e7c:	08009fb4 	.word	0x08009fb4
+ 8000e80:	080083fc 	.word	0x080083fc
+ 8000e84:	08008400 	.word	0x08008400
 	  	  	  	                    if(reel_state[i] == 1){
  8000e88:	4a8e      	ldr	r2, [pc, #568]	@ (80010c4 <main+0x464>)
  8000e8a:	6d7b      	ldr	r3, [r7, #84]	@ 0x54
@@ -2294,7 +2294,7 @@ int main(void)
  8001282:	2110      	movs	r1, #16
  8001284:	2002      	movs	r0, #2
  8001286:	f000 fc8d 	bl	8001ba4 <ssd1306_SetCursor>
-	  	  	  	      				ssd1306_WriteString("- Press blue button to SPIN", Font_6x8, White);
+	  	  	  	      				ssd1306_WriteString("Press BLUE to SPIN", Font_6x8, White);
  800128a:	4b2f      	ldr	r3, [pc, #188]	@ (8001348 <main+0x6e8>)
  800128c:	2201      	movs	r2, #1
  800128e:	9200      	str	r2, [sp, #0]
@@ -2306,7 +2306,7 @@ int main(void)
  8001298:	211e      	movs	r1, #30
  800129a:	2002      	movs	r0, #2
  800129c:	f000 fc82 	bl	8001ba4 <ssd1306_SetCursor>
-	  	  	  	      				ssd1306_WriteString("- 3 symbols = MAX WIN", Font_6x8, White);
+	  	  	  	      				ssd1306_WriteString("3 symbols = MAX WIN", Font_6x8, White);
  80012a0:	4b29      	ldr	r3, [pc, #164]	@ (8001348 <main+0x6e8>)
  80012a2:	2201      	movs	r2, #1
  80012a4:	9200      	str	r2, [sp, #0]
@@ -2318,7 +2318,7 @@ int main(void)
  80012ae:	212a      	movs	r1, #42	@ 0x2a
  80012b0:	2002      	movs	r0, #2
  80012b2:	f000 fc77 	bl	8001ba4 <ssd1306_SetCursor>
-	  	  	  	      				ssd1306_WriteString("- 2 symbols = 33% WIN", Font_6x8, White);
+	  	  	  	      				ssd1306_WriteString("2 symbols = 33% WIN", Font_6x8, White);
  80012b6:	4b24      	ldr	r3, [pc, #144]	@ (8001348 <main+0x6e8>)
  80012b8:	2201      	movs	r2, #1
  80012ba:	9200      	str	r2, [sp, #0]
@@ -2334,9 +2334,9 @@ int main(void)
  80012cc:	2136      	movs	r1, #54	@ 0x36
  80012ce:	2050      	movs	r0, #80	@ 0x50
  80012d0:	f000 fd23 	bl	8001d1a <ssd1306_FillRectangle>
-	  	  	  	      				ssd1306_SetCursor(85, 55);
+	  	  	  	      				ssd1306_SetCursor(2, 55);
  80012d4:	2137      	movs	r1, #55	@ 0x37
- 80012d6:	2055      	movs	r0, #85	@ 0x55
+ 80012d6:	2002      	movs	r0, #2
  80012d8:	f000 fc64 	bl	8001ba4 <ssd1306_SetCursor>
 	  	  	  	      				ssd1306_WriteString("[q] Back to menu", Font_6x8, White);
  80012dc:	4b1a      	ldr	r3, [pc, #104]	@ (8001348 <main+0x6e8>)
@@ -2399,28 +2399,28 @@ int main(void)
 	  ssd1306_Fill(Black);
  8001344:	e4e4      	b.n	8000d10 <main+0xb0>
  8001346:	bf00      	nop
- 8001348:	08009fb4 	.word	0x08009fb4
- 800134c:	08008400 	.word	0x08008400
- 8001350:	0800840c 	.word	0x0800840c
- 8001354:	08009fcc 	.word	0x08009fcc
+ 8001348:	08009fa8 	.word	0x08009fa8
+ 800134c:	08008404 	.word	0x08008404
+ 8001350:	08008410 	.word	0x08008410
+ 8001354:	08009fc0 	.word	0x08009fc0
  8001358:	20000270 	.word	0x20000270
  800135c:	2000027c 	.word	0x2000027c
- 8001360:	08009fc0 	.word	0x08009fc0
- 8001364:	08008410 	.word	0x08008410
- 8001368:	08008420 	.word	0x08008420
- 800136c:	08008434 	.word	0x08008434
- 8001370:	08008440 	.word	0x08008440
- 8001374:	08008454 	.word	0x08008454
- 8001378:	08008464 	.word	0x08008464
- 800137c:	08008470 	.word	0x08008470
- 8001380:	0800848c 	.word	0x0800848c
- 8001384:	080084a4 	.word	0x080084a4
- 8001388:	080084bc 	.word	0x080084bc
- 800138c:	080084d0 	.word	0x080084d0
+ 8001360:	08009fb4 	.word	0x08009fb4
+ 8001364:	08008414 	.word	0x08008414
+ 8001368:	08008424 	.word	0x08008424
+ 800136c:	08008438 	.word	0x08008438
+ 8001370:	08008444 	.word	0x08008444
+ 8001374:	08008458 	.word	0x08008458
+ 8001378:	08008468 	.word	0x08008468
+ 800137c:	08008474 	.word	0x08008474
+ 8001380:	08008488 	.word	0x08008488
+ 8001384:	0800849c 	.word	0x0800849c
+ 8001388:	080084b0 	.word	0x080084b0
+ 800138c:	080084c4 	.word	0x080084c4
  8001390:	20000000 	.word	0x20000000
  8001394:	20000004 	.word	0x20000004
- 8001398:	080084dc 	.word	0x080084dc
- 800139c:	080084e8 	.word	0x080084e8
+ 8001398:	080084d0 	.word	0x080084d0
+ 800139c:	080084dc 	.word	0x080084dc
 
 080013a0 <SystemClock_Config>:
 /**
@@ -5321,7 +5321,7 @@ LoopForever:
   ldr r1, =_edata
  8002394:	20000108 	.word	0x20000108
   ldr r2, =_sidata
- 8002398:	0800a590 	.word	0x0800a590
+ 8002398:	0800a584 	.word	0x0800a584
   ldr r2, =_sbss
  800239c:	20000108 	.word	0x20000108
   ldr r4, =_ebss
@@ -8780,7 +8780,7 @@ HAL_StatusTypeDef HAL_RCC_OscConfig(RCC_OscInitTypeDef  *RCC_OscInitStruct)
  800367c:	e014      	b.n	80036a8 <HAL_RCC_OscConfig+0x298>
  800367e:	bf00      	nop
  8003680:	40021000 	.word	0x40021000
- 8003684:	0800a358 	.word	0x0800a358
+ 8003684:	0800a34c 	.word	0x0800a34c
  8003688:	20000080 	.word	0x20000080
  800368c:	20000084 	.word	0x20000084
  8003690:	4ba0      	ldr	r3, [pc, #640]	@ (8003914 <HAL_RCC_OscConfig+0x504>)
@@ -10085,7 +10085,7 @@ HAL_StatusTypeDef HAL_RCC_ClockConfig(RCC_ClkInitTypeDef  *RCC_ClkInitStruct, ui
  8003db2:	bd80      	pop	{r7, pc}
  8003db4:	40022000 	.word	0x40022000
  8003db8:	40021000 	.word	0x40021000
- 8003dbc:	0800a358 	.word	0x0800a358
+ 8003dbc:	0800a34c 	.word	0x0800a34c
  8003dc0:	20000080 	.word	0x20000080
  8003dc4:	20000084 	.word	0x20000084
 
@@ -10290,7 +10290,7 @@ uint32_t HAL_RCC_GetSysClockFreq(void)
  8003ecc:	4770      	bx	lr
  8003ece:	bf00      	nop
  8003ed0:	40021000 	.word	0x40021000
- 8003ed4:	0800a370 	.word	0x0800a370
+ 8003ed4:	0800a364 	.word	0x0800a364
  8003ed8:	00f42400 	.word	0x00f42400
  8003edc:	007a1200 	.word	0x007a1200
 
@@ -10339,7 +10339,7 @@ uint32_t HAL_RCC_GetPCLK1Freq(void)
  8003f18:	4618      	mov	r0, r3
  8003f1a:	bd80      	pop	{r7, pc}
  8003f1c:	40021000 	.word	0x40021000
- 8003f20:	0800a368 	.word	0x0800a368
+ 8003f20:	0800a35c 	.word	0x0800a35c
 
 08003f24 <HAL_RCC_GetPCLK2Freq>:
   * @note   Each time PCLK2 changes, this function must be called to update the
@@ -10366,7 +10366,7 @@ uint32_t HAL_RCC_GetPCLK2Freq(void)
  8003f44:	4618      	mov	r0, r3
  8003f46:	bd80      	pop	{r7, pc}
  8003f48:	40021000 	.word	0x40021000
- 8003f4c:	0800a368 	.word	0x0800a368
+ 8003f4c:	0800a35c 	.word	0x0800a35c
 
 08003f50 <RCC_SetFlashLatencyFromMSIRange>:
             voltage range.
@@ -17439,8 +17439,8 @@ __weak void HAL_UARTEx_WakeupCallback(UART_HandleTypeDef *huart)
  80068a0:	615a      	str	r2, [r3, #20]
  80068a2:	bd38      	pop	{r3, r4, r5, pc}
  80068a4:	200000b8 	.word	0x200000b8
- 80068a8:	0800a3a0 	.word	0x0800a3a0
- 80068ac:	0800a3b7 	.word	0x0800a3b7
+ 80068a8:	0800a394 	.word	0x0800a394
+ 80068ac:	0800a3ab 	.word	0x0800a3ab
  80068b0:	abcd330e 	.word	0xabcd330e
  80068b4:	e66d1234 	.word	0xe66d1234
  80068b8:	0005deec 	.word	0x0005deec
@@ -17484,8 +17484,8 @@ __weak void HAL_UARTEx_WakeupCallback(UART_HandleTypeDef *huart)
  8006912:	f020 4000 	bic.w	r0, r0, #2147483648	@ 0x80000000
  8006916:	bd10      	pop	{r4, pc}
  8006918:	200000b8 	.word	0x200000b8
- 800691c:	0800a3a0 	.word	0x0800a3a0
- 8006920:	0800a3b7 	.word	0x0800a3b7
+ 800691c:	0800a394 	.word	0x0800a394
+ 8006920:	0800a3ab 	.word	0x0800a3ab
  8006924:	abcd330e 	.word	0xabcd330e
  8006928:	e66d1234 	.word	0xe66d1234
  800692c:	0005deec 	.word	0x0005deec
@@ -17592,7 +17592,7 @@ __weak void HAL_UARTEx_WakeupCallback(UART_HandleTypeDef *huart)
  8006a20:	d1f6      	bne.n	8006a10 <_strtol_l.isra.0+0xd8>
  8006a22:	f8c8 1000 	str.w	r1, [r8]
  8006a26:	e794      	b.n	8006952 <_strtol_l.isra.0+0x1a>
- 8006a28:	0800a47f 	.word	0x0800a47f
+ 8006a28:	0800a473 	.word	0x0800a473
 
 08006a2c <strtol>:
  8006a2c:	4613      	mov	r3, r2
@@ -18586,10 +18586,10 @@ __weak void HAL_UARTEx_WakeupCallback(UART_HandleTypeDef *huart)
  80072da:	4798      	blx	r3
  80072dc:	3601      	adds	r6, #1
  80072de:	e7f2      	b.n	80072c6 <__libc_init_array+0x1e>
- 80072e0:	0800a588 	.word	0x0800a588
- 80072e4:	0800a588 	.word	0x0800a588
- 80072e8:	0800a588 	.word	0x0800a588
- 80072ec:	0800a58c 	.word	0x0800a58c
+ 80072e0:	0800a57c 	.word	0x0800a57c
+ 80072e4:	0800a57c 	.word	0x0800a57c
+ 80072e8:	0800a57c 	.word	0x0800a57c
+ 80072ec:	0800a580 	.word	0x0800a580
 
 080072f0 <__retarget_lock_init_recursive>:
  80072f0:	4770      	bx	lr
@@ -18635,9 +18635,9 @@ __weak void HAL_UARTEx_WakeupCallback(UART_HandleTypeDef *huart)
  800733c:	e7f3      	b.n	8007326 <__assert_func+0x12>
  800733e:	bf00      	nop
  8007340:	200000b8 	.word	0x200000b8
- 8007344:	0800a40f 	.word	0x0800a40f
- 8007348:	0800a41c 	.word	0x0800a41c
- 800734c:	0800a44a 	.word	0x0800a44a
+ 8007344:	0800a403 	.word	0x0800a403
+ 8007348:	0800a410 	.word	0x0800a410
+ 800734c:	0800a43e 	.word	0x0800a43e
 
 08007350 <_free_r>:
  8007350:	b538      	push	{r3, r4, r5, lr}
@@ -19145,11 +19145,11 @@ __weak void HAL_UARTEx_WakeupCallback(UART_HandleTypeDef *huart)
  80077e4:	4638      	mov	r0, r7
  80077e6:	f000 f9bb 	bl	8007b60 <_printf_i>
  80077ea:	e7ed      	b.n	80077c8 <_svfiprintf_r+0x1c0>
- 80077ec:	0800a44b 	.word	0x0800a44b
- 80077f0:	0800a455 	.word	0x0800a455
+ 80077ec:	0800a43f 	.word	0x0800a43f
+ 80077f0:	0800a449 	.word	0x0800a449
  80077f4:	00000000 	.word	0x00000000
  80077f8:	08007551 	.word	0x08007551
- 80077fc:	0800a451 	.word	0x0800a451
+ 80077fc:	0800a445 	.word	0x0800a445
 
 08007800 <__sfputc_r>:
  8007800:	6893      	ldr	r3, [r2, #8]
@@ -19415,11 +19415,11 @@ __weak void HAL_UARTEx_WakeupCallback(UART_HandleTypeDef *huart)
  8007a68:	4630      	mov	r0, r6
  8007a6a:	f000 f879 	bl	8007b60 <_printf_i>
  8007a6e:	e7e4      	b.n	8007a3a <_vfiprintf_r+0x1e6>
- 8007a70:	0800a44b 	.word	0x0800a44b
- 8007a74:	0800a455 	.word	0x0800a455
+ 8007a70:	0800a43f 	.word	0x0800a43f
+ 8007a74:	0800a449 	.word	0x0800a449
  8007a78:	00000000 	.word	0x00000000
  8007a7c:	0800782f 	.word	0x0800782f
- 8007a80:	0800a451 	.word	0x0800a451
+ 8007a80:	0800a445 	.word	0x0800a445
 
 08007a84 <_printf_common>:
  8007a84:	e92d 47f0 	stmdb	sp!, {r4, r5, r6, r7, r8, r9, sl, lr}
@@ -19748,8 +19748,8 @@ __weak void HAL_UARTEx_WakeupCallback(UART_HandleTypeDef *huart)
  8007d8c:	2500      	movs	r5, #0
  8007d8e:	f104 0619 	add.w	r6, r4, #25
  8007d92:	e7f5      	b.n	8007d80 <_printf_i+0x220>
- 8007d94:	0800a45c 	.word	0x0800a45c
- 8007d98:	0800a46d 	.word	0x0800a46d
+ 8007d94:	0800a450 	.word	0x0800a450
+ 8007d98:	0800a461 	.word	0x0800a461
 
 08007d9c <fiprintf>:
  8007d9c:	b40e      	push	{r1, r2, r3}
