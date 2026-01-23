@@ -45,7 +45,6 @@ typedef enum {
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define MAX_USERS               8
 #define USERNAME_LEN            16
 #define FLASH_USERS_ADDR        0x080E0000U
 #define FLASH_USER_START_PAGE   511
@@ -92,20 +91,30 @@ GETCHAR_PROTOTYPE
 	return ch;
 }
 
-#define MAX_USERS               8
-#define USERNAME_LEN            16
-#define FLASH_USERS_ADDR        0x080E0000U
-#define FLASH_USER_START_PAGE   511
-#define FLASH_USER_NBPAGES      1
-#define FLASH_USER_START_ADDR   0x080FF800U
-#define CMD_BUF_SIZE            40
 
-char cmd_buffer[CMD_BUF_SIZE + 1];
-char* user[] = {"defUser"};
-unsigned int credit_balance = 0;
-unsigned short tab[] = {0,1,2,3,4};//zapisac tabele do flash memeory
-//@@
-/* USER CODE BEGIN PV */
+#define FLASH_USER_PAGE_ADDR   0x080FF800U   // last page
+#define FLASH_BALANCE_ADDR     (FLASH_USER_PAGE_ADDR + 0x00)
+#define FLASH_USERNAME_ADDR    (FLASH_USER_PAGE_ADDR + 0x08)
+
+
+/* USER CODE BEGIN PV *///@@
+typedef struct {
+    int32_t credit;           // 4 bytes
+    char    username[16];     // 16 bytes
+    uint32_t crc;             // optional safety
+} account_t;
+
+#define FLASH_ACCOUNTS_PAGE      511//@@
+#define FLASH_ACCOUNTS_ADDR      0x080FF800U//@@
+#define MAX_ACCOUNTS             3//@@
+#define ACCOUNT_SIZE             sizeof(account_t)//@@
+/*
+ * 0x080FF800  account[0]
+0x080FF818  account[1]
+0x080FF830  account[2]
+ * */
+account_t accounts[MAX_ACCOUNTS];//@@
+int active_user = -1;
 
 //BAZA DANYCH (Wspólna)
 volatile int credits = 100;
@@ -176,33 +185,93 @@ reels reel[3] = {
     {0, 1, 0, 88}  // Bęben 3
 };
 
-//Obsługa pamięci flash
-bool Flash_WriteBalance(uint32_t balance)
+void Flash_LoadAccounts(void)
+{
+    const account_t *flash = (const account_t *)FLASH_ACCOUNTS_ADDR;
+    for (int i = 0; i < MAX_ACCOUNTS; i++)
+    {
+    	if ((uint32_t)flash[i].credit == 0xFFFFFFFF)
+    	{
+    	    accounts[i].credit = 0;
+    	    accounts[i].username[0] = '\0';
+    	}
+    	else
+    	{
+    	    accounts[i] = flash[i];
+    	}
+    }
+}
+
+bool Flash_SaveAccounts(void)
 {
     HAL_FLASH_Unlock();
 
-    // Wymaż stronę
-    FLASH_EraseInitTypeDef EraseInitStruct;
-    uint32_t PageError = 0;
+    FLASH_EraseInitTypeDef erase = {
+        .TypeErase = FLASH_TYPEERASE_PAGES,
+        .Banks     = FLASH_BANK_2,
+        .Page      = FLASH_ACCOUNTS_PAGE,
+        .NbPages   = 1
+    };
 
-    EraseInitStruct.TypeErase = FLASH_TYPEERASE_PAGES;
-    EraseInitStruct.Banks     = FLASH_BANK_2;
-    EraseInitStruct.Page      = FLASH_USER_START_PAGE;
-    EraseInitStruct.NbPages   = FLASH_USER_NBPAGES;
+    uint32_t error;
+    if (HAL_FLASHEx_Erase(&erase, &error) != HAL_OK)
+        return false;
 
-    if(HAL_FLASHEx_Erase(&EraseInitStruct, &PageError) != HAL_OK)
+    uint64_t *src = (uint64_t *)accounts;
+    uint32_t addr = FLASH_ACCOUNTS_ADDR;
+
+    for (int i = 0; i < (sizeof(accounts) / 8); i++)
     {
-        HAL_FLASH_Lock();
-        return false;
+        if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, addr, src[i]) != HAL_OK)
+            return false;
+
+        addr += 8;
     }
-    // Flash wymaga zapisu double word = 64-bit
-    uint64_t data64 = (uint64_t)balance; // dolne 32-bit = saldo, górne 32-bit = 0
-    if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, FLASH_USER_START_ADDR, data64) != HAL_OK)
-    {
-        HAL_FLASH_Lock();
-        return false;
-    }
+
     HAL_FLASH_Lock();
+    return true;
+}
+
+bool Account_Create(const char *name)
+{
+    for (int i = 0; i < MAX_ACCOUNTS; i++)
+    {
+        if (accounts[i].username[0] == '\0')
+        {
+            strncpy(accounts[i].username, name, 15);
+            accounts[i].credit = 100;
+            return Flash_SaveAccounts();
+        }
+    }
+    return false; // full
+}
+
+int Account_Login(const char *name)
+{
+    for (int i = 0; i < MAX_ACCOUNTS; i++)
+    {
+        if (strcmp(accounts[i].username, name) == 0)
+            return i;
+    }
+    return -1;
+}
+
+static void SaveActiveUser(void)
+{
+    if (active_user >= 0)
+    {
+        accounts[active_user].credit = credits;
+        Flash_SaveAccounts();
+    }
+}
+
+static bool IsLoggedIn(void)
+{
+    if (active_user < 0)
+    {
+        printf("Not logged in. Use: login <name>\r\n");
+        return false;
+    }
     return true;
 }
 
@@ -212,99 +281,143 @@ void DisplayTerminalPrompt(void)
     fflush(stdout);
 }
 
-//Parser komend
 bool CheckCommand(const char* cmd)
 {
+    /* ---------------- HELP ---------------- */
     if(strcmp(cmd, "help") == 0)
     {
-        printf("Usefull commands:\r\n");
-        printf("\r\n");
-        printf("help - print a list of commands used on software\r\n");
-        printf("balance - prints an actual cash stored in Flash memory\r\n");
-        printf("deposit <num> - deposits an number of cash to user\r\n");
-        printf("withdraw <num> - withdraw an number of cash from user\r\n");
-        printf("whoami - prints an user name\r\n");
-        printf("setuser <name> - change and save username\r\n");
+        printf(
+            "Commands:\r\n"
+            " help\r\n"
+            " users               - list accounts\r\n"
+            " create <name>       - create account\r\n"
+            " login <name>        - login\r\n"
+            " logout              - logout\r\n"
+            " whoami              - show user\r\n"
+            " balance             - show credits\r\n"
+            " deposit <num>       - add credits\r\n"
+            " withdraw <num>      - remove credits\r\n"
+        );
         return true;
     }
-
-    if(strcmp(cmd, "balance") == 0)
+    /* ---------------- USERS LIST ---------------- */
+    if(strcmp(cmd, "users") == 0)
     {
-        printf("User cash balance: %d\r\n", credits);
-        return true;
-    }
-
-    if(strncmp(cmd, "deposit ", 8) == 0)
-    {
-        const char* num_str = cmd + 8;
-        int amount = atoi(num_str);
-        if(amount > 0)
+        for(int i = 0; i < MAX_ACCOUNTS; i++)
         {
-            credits += amount;
-            if (Flash_WriteBalance(credits))
-            {
-                printf("Deposited: %d\r\n", amount);
-            }
-            else
-            {
-                printf("Flash write error!\r\n");
-            }
+            if(accounts[i].username[0])
+                printf("%d. %s (%d)\r\n", i+1, accounts[i].username, accounts[i].credit);
         }
+        return true;
+    }
+    /* ---------------- CREATE ---------------- */
+    if(strncmp(cmd, "create ", 7) == 0)
+    {
+        const char *name = cmd + 7;
+        if(strlen(name) == 0 || strlen(name) >= 16)
+        {
+            printf("Invalid username\r\n");
+            return true;
+        }
+        if(Account_Create(name))
+            printf("Account created: %s\r\n", name);
         else
-        {
-            printf("Invalid value: '%s'\r\n", num_str);
-        }
+            printf("Account list full\r\n");
+
         return true;
     }
+    /* ---------------- LOGIN ---------------- */
+    if(strncmp(cmd, "login ", 6) == 0)
+    {
+        const char *name = cmd + 6;
+        int idx = Account_Login(name);
 
-    if(strncmp(cmd, "withdraw", 8) == 0)
+        if(idx < 0)
         {
-            const char* num_str = cmd + 8;
-            int amount = atoi(num_str);
-            if(amount > 0)
-            {
-                credits -= amount;
-                if (Flash_WriteBalance(credits))
-                {
-                    printf("Withdrawed: %d\r\n", amount);
-                }
-                else
-                {
-                    printf("Flash write error!\r\n");
-                }
-            }
-            else
-            {
-                printf("Invalid value: '%s'\r\n", num_str);
-            }
+            printf("User not found\r\n");
             return true;
         }
 
-    if(strcmp(cmd, "whoami") == 0)
-    {
-        printf("%s\r\n", user_name);
+        active_user = idx;
+        credits = accounts[idx].credit;
+        strncpy(user_name, accounts[idx].username, 16);
+
+        printf("Logged in as %s\r\n", user_name);
         return true;
     }
 
-    if (strncmp(cmd, "setuser ", 8) == 0)
+    /* ---------------- LOGOUT ---------------- */
+    if(strcmp(cmd, "logout") == 0)
     {
-        const char* name_ptr = cmd + 8;
-        if(strlen(name_ptr) > 0 && strlen(name_ptr) < 15) {
-
-        	strncpy(user_name, name_ptr, USERNAME_LEN - 1);
-
-        	user_name[USERNAME_LEN - 1] = '\0';
-            // Tutaj symulujemy zapis nazwy (sukces)
-            printf("Username saved: %s\r\n", user_name);
-        } else {
-            printf("Invalid username!\r\n");
+        if(IsLoggedIn())
+        {
+            SaveActiveUser();
+            printf("Logged out: %s\r\n", user_name);
+            active_user = -1;
         }
         return true;
     }
 
-    printf("command not found : '%s'\r\n", cmd);
+    /* ---------------- WHOAMI ---------------- */
+    if(strcmp(cmd, "whoami") == 0)
+    {
+        if(active_user >= 0)
+            printf("%s\r\n", user_name);
+        else
+            printf("guest\r\n");
+        return true;
+    }
+
+    /* ---------------- BALANCE ---------------- */
+    if(strcmp(cmd, "balance") == 0)
+    {
+        if(IsLoggedIn())
+            printf("Balance: %d\r\n", credits);
+        return true;
+    }
+
+    /* ---------------- DEPOSIT ---------------- */
+    if(strncmp(cmd, "deposit ", 8) == 0)
+    {
+        if(!IsLoggedIn()) return true;
+
+        int amount = atoi(cmd + 8);
+        if(amount <= 0)
+        {
+            printf("Invalid amount\r\n");
+            return true;
+        }
+        credits += amount;
+        printf("Deposited %d\r\n", amount);
+        SaveActiveUser();
+        return true;
+    }
+
+    /* ---------------- WITHDRAW ---------------- */
+    if(strncmp(cmd, "withdraw ", 9) == 0)
+    {
+        if(!IsLoggedIn()) return true;
+
+        int amount = atoi(cmd + 9);
+        if(amount <= 0 || amount > credits)
+        {
+            printf("Invalid amount\r\n");
+            return true;
+        }
+
+        credits -= amount;
+        printf("Withdrawn %d\r\n", amount);
+        SaveActiveUser();
+        return true;
+    }
+
+    /* ---------------- UNKNOWN ---------------- */
+    printf("Command not found: '%s'\r\n", cmd);
     return false;
 }
+
+//Parser komend
+
 
 // Funkcja do zaznaczenia wybranej opcji w menu
 void DrawMenuLine(int y, int index, char* text){
@@ -324,9 +437,6 @@ void DrawMenuLine(int y, int index, char* text){
 //Obsługa przerwań
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-	//printf("debug1");fflush(stdout);
-	//return;
-	// //////////////////////
     if(GPIO_Pin == B1_Pin)
     {
         static uint32_t last_click = 0;
@@ -361,6 +471,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     }
 }
 
+static uint8_t esc_ignore = 0;
+
 //PRZERWANIE OD UART (Sterowanie)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
@@ -368,6 +480,24 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     if (huart->Instance == USART2)
     {
         char c = (char)rx_data[0];
+        /* ---------- BLOCK ARROW KEYS ---------- */
+        if (esc_ignore)
+        {
+            if (c >= 'A' && c <= 'Z')
+            {
+                esc_ignore = 0;   // End of escape sequence
+            }
+
+            HAL_UART_Receive_IT(&huart2, rx_data, 1);
+            return;
+        }
+
+        if (c == 0x1B) // ESC
+        {
+            esc_ignore = 1;
+            HAL_UART_Receive_IT(&huart2, rx_data, 1);
+            return;
+        }
         uint8_t is_nav_command = 0; // Flaga: czy to był klawisz sterujący?
         // 1. STEROWANIE MENU (tylko gdy nie wpisujemy już komendy)
         if (cmd_index == 0)
@@ -424,7 +554,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
                 }
                 cmd_index = 0; // Reset bufora po Enterze
             }
-
             else if (c == 0x08 || c == 127)//@@
             { // Backspace
                 if (cmd_index > 0)
@@ -451,62 +580,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 }
 
 
-uint32_t Flash_ReadBalance(void)
-{
-    uint64_t value = *(uint64_t*)FLASH_USER_START_ADDR;
-    if(value == 0xFFFFFFFFFFFFFFFF) return 0; // Flash nie była jeszcze zapisana
-    return (uint32_t)(value & 0xFFFFFFFF);   // bierzemy dolne 32-bit
-}
-
-void GetCommand(void)
-{
-    uint8_t ch;
-    cmd_index = 0;
-    memset(cmd_buffer, 0, sizeof(cmd_buffer));
-    while(1)
-    {
-        HAL_UART_Receive(&huart2, &ch, 1, HAL_MAX_DELAY);
-        // ESC sequence (strzałki)
-        if(ch == 27) // ESC
-        {
-        	uint8_t seq[2];
-            HAL_UART_Receive(&huart2, &seq[0], 1, HAL_MAX_DELAY);
-            HAL_UART_Receive(&huart2, &seq[1], 1, HAL_MAX_DELAY);
-            continue; // zignoruj escape
-        }
-        //enter
-        if(ch == '\r' || ch == '\n')
-        {
-            printf("\r\n"); // przejście do nowej linii
-            fflush(stdout);
-            cmd_buffer[cmd_index] = '\0'; // zakończ string
-            break;
-        }
-        else if(ch == 0x08 || ch == 127) // 0x08 = ASCII backspace, 127 = DEL
-        {
-            if(cmd_index > 0)
-            {
-                cmd_index--;
-                cmd_buffer[cmd_index] = '\0';
-                printf("\b \b");
-                fflush(stdout);
-            }
-        }
-        else
-        {
-            if(cmd_index < CMD_BUF_SIZE)
-            {
-                cmd_buffer[cmd_index++] = ch;
-                printf("%c", ch);
-                fflush(stdout);
-            }
-            else
-            {
-                //
-            }
-        }
-    }
-}
 
 void DisplayTitle()
 {
@@ -580,7 +653,14 @@ int main(void)
     ssd1306_UpdateScreen();
 
     // Wczytanie stanu konta
-    credits = Flash_ReadBalance();
+
+    Flash_LoadAccounts();
+    active_user = -1;
+    credits = 0;
+    strcpy(user_name, "guest");
+
+    //Flash_ReadUsername(user_name);
+    //credits = Flash_ReadBalance();
 
     // 2. WYMUSZENIE PRIORYTETU PRZERWANIA
     HAL_NVIC_SetPriority(USART2_IRQn, 2, 0);
@@ -674,7 +754,7 @@ int main(void)
 
 	  	  	  	                    if(win > 0){
 	  	  	  	                        credits += win;
-	  	  	  	                        Flash_WriteBalance(credits);
+	  	  	  	                        SaveActiveUser();
 	  	  	  	                        ssd1306_FillRectangle(10, 18, 108, 48, White);
 	  	  	  	                        sprintf(buffor,"WIN %d", win );
 	  	  	  	                        int x_position = (win > 99) ? 25 : 35;
