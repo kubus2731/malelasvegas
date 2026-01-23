@@ -271,7 +271,7 @@ void DrawMenuLine(int y, int index, char* text){
 	if(menu_position == index){
 		ssd1306_FillRectangle(0, 1, 128, 10, White);
 		ssd1306_SetCursor(20, 2);
-		ssd1306_WriteString("MALE LAS VEGAS", Font_6x8, Black);
+		ssd1306_WriteString("LITTLE LAS VEGAS", Font_6x8, Black);
 
 		ssd1306_SetCursor(10, y);
 
@@ -597,16 +597,16 @@ int main(void)
 	  	  	  	      				ssd1306_WriteString("GAME RULES:", Font_6x8, Black);
 
 	  	  	  	      				ssd1306_SetCursor(2, 16);
-	  	  	  	      				ssd1306_WriteString("- Press blue button to SPIN", Font_6x8, White);
+	  	  	  	      				ssd1306_WriteString("Press BLUE to SPIN", Font_6x8, White);
 
 	  	  	  	      				ssd1306_SetCursor(2, 30);
-	  	  	  	      				ssd1306_WriteString("- 3 symbols = MAX WIN", Font_6x8, White);
+	  	  	  	      				ssd1306_WriteString("3 symbols = MAX WIN", Font_6x8, White);
 
 	  	  	  	      				ssd1306_SetCursor(2, 42);
-	  	  	  	      				ssd1306_WriteString("- 2 symbols = 33% WIN", Font_6x8, White);
+	  	  	  	      				ssd1306_WriteString("2 symbols = 33% WIN", Font_6x8, White);
 
 	  	  	  	      				ssd1306_FillRectangle(80, 54, 128, 64, Black);
-	  	  	  	      				ssd1306_SetCursor(85, 55);
+	  	  	  	      				ssd1306_SetCursor(2, 55);
 	  	  	  	      				ssd1306_WriteString("[q] Back to menu", Font_6x8, White);
 	  	  	  	      				break;
 
