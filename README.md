@@ -9,6 +9,7 @@ Projekt gry hazardowej typu "Slot Machine" zrealizowany na mikrokontrolerze **ST
 * **Menu Systemowe:** Nawigacja po ekranach (Gra, Autorzy, Opis, Wyniki).
 * **Zdalne Sterowanie:** Możliwość sterowania grą i menu poprzez terminal UART.
 * **Prawdziwa Losowość:** Generator RNG inicjowany czasem reakcji gracza.
+* * **Możliwość zapisu do pamięci:** Zapis do 3 użytkowników w pamięci oraz ich kredytów.
 
 ## 🛠️ Sprzęt (Hardware)
 
